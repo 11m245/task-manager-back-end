@@ -1,6 +1,7 @@
 import express from "express";
 import { MongoClient } from "mongodb";
 import shopRouter from "./routes/shop.routes.js";
+import taskRouter from "./routes/task.routes.js";
 import * as dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import cors from "cors";
@@ -27,6 +28,7 @@ app.get("/", function (req, res) {
 app.listen(PORT, () => console.log("app started in PORT", PORT));
 
 app.use("/shop", shopRouter);
+app.use("/task", taskRouter);
 
 export async function sendMail(mailerData) {
   const { subject, sender, receivers, textContent, htmlContent } = mailerData;

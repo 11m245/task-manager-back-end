@@ -7,11 +7,12 @@ import {
   checkShopAlreadyExist,
   getShopActivationTokenFromObjectID,
   getShopFromActivationToken,
-  getShopFromDBByEmail,
   getShopFromObjectID,
   getShopIdFromLoginToken,
   getShopIdFromResetToken,
+  getShopOperatorsFromObjectID,
   getShopProfileFromId,
+  getshopFromDBByEmail,
   makeResetTokenExpire,
   saveActivationTokenInDB,
   saveLoginToken,
@@ -102,7 +103,7 @@ router.post("/signup", async function (request, response) {
         const activationToken = await generateActivationToken(shopFromDB);
         // console.log("2 activationToken is", activationToken);
         const saveTokenResult = await saveActivationTokenInDB({
-          shopId: shopFromDB._id,
+          userId: shopFromDB._id,
           type: "activation",
           createdAt: Date.now(),
           token: activationToken,
@@ -130,7 +131,7 @@ router.post("/activate", async function (request, response) {
     activationTokenFromFront
   );
   // console.log("activationshopfromDB", tokenedShopFromDB);
-  const tokenedShop = await getShopFromObjectID(tokenedShopFromDB.shopId);
+  const tokenedShop = await getShopFromObjectID(tokenedShopFromDB.userId);
   if (tokenedShop) {
     if (!tokenedShop.isActivated) {
       await activateShopInDB(tokenedShop._id);
@@ -150,7 +151,7 @@ router.post("/activate", async function (request, response) {
 router.post("/login", async function (request, response) {
   const loginData = request.body;
   // console.log("loginData", loginData);
-  const shopFromDB = await getShopFromDBByEmail(loginData.email);
+  const shopFromDB = await getshopFromDBByEmail(loginData.email);
   if (shopFromDB) {
     if (shopFromDB.isActivated === true) {
       const isPasswordMatch = await bcrypt.compare(
@@ -169,6 +170,12 @@ router.post("/login", async function (request, response) {
             : "shop Login Successfull",
           token: loginToken,
           isOperator: shopFromDB.isOperator === true ? true : false,
+          userInfo: {
+            name: shopFromDB.managerName
+              ? shopFromDB.managerName
+              : shopFromDB.name,
+            shopName: shopFromDB.shopName,
+          },
         });
       } else {
         response.status(401).send({ message: "Invalid Credentials" });
@@ -234,12 +241,32 @@ router.post("/sendResetLink", async function (request, response) {
   }
 });
 
+router.get("/myOperators", async function (request, response) {
+  const { logintoken } = request.headers;
+  // console.log("login token is", request.headers.logintoken);
+  const tokenedShop = await getShopIdFromLoginToken(logintoken);
+  if (tokenedShop) {
+    const shopOperators = await getShopOperatorsFromObjectID(
+      tokenedShop.userId
+    );
+    // console.log("shop is", tokenedShop);
+    response.send({
+      message: "shop Operators fetched",
+      payload: {
+        shopOperators: shopOperators,
+      },
+    });
+  } else {
+    response.status(400).send({ message: "Unauthorised Usage" });
+  }
+});
+
 router.get("/getInfoFromResetToken", async function (request, response) {
   const { resettoken } = request.headers;
   // console.log("reset token is", resettoken);
   const tokenedShop = await getShopIdFromResetToken(resettoken);
   if (tokenedShop) {
-    const shop = await getShopFromObjectID(tokenedShop.shopId);
+    const shop = await getShopFromObjectID(tokenedShop.userId);
     // console.log("shop is", shop);
     response.send({
       message: "shop details fetched",
@@ -254,7 +281,7 @@ router.post("/change-password", async function (request, response) {
   const data = request.body;
   // console.log(data);
   const tokenedShop = await getShopIdFromResetToken(resettoken);
-  const shopFromDB = await getShopFromObjectID(tokenedShop.shopId);
+  const shopFromDB = await getShopFromObjectID(tokenedShop.userId);
   // console.log("shopsssss", shopFromDB);
   if (data.email === shopFromDB.email) {
     if (data.password === data.cpassword) {
@@ -279,7 +306,7 @@ router.get("/getShopNameImage", async function (request, response) {
   // console.log("login token is", request.headers);
   const tokenedShop = await getShopIdFromLoginToken(logintoken);
   if (tokenedShop) {
-    const shop = await getShopProfileFromId(tokenedShop.shopId);
+    const shop = await getShopProfileFromId(tokenedShop.userId);
     // console.log("shop is", shop);
     response.send({
       message: "shop details fetched",
@@ -307,7 +334,7 @@ router.get("/profile", async function (request, response) {
   const { logintoken } = request.headers;
   const tokenedShop = await getShopIdFromLoginToken(logintoken);
   if (tokenedShop) {
-    const shop = await getShopFromObjectID(tokenedShop.shopId);
+    const shop = await getShopFromObjectID(tokenedShop.userId);
     // console.log("profile login shop is", shop);
     const profile = await getShopProfileFromId(shop._id);
 
@@ -326,7 +353,7 @@ router.put("/updateShopProfile", async function (request, response) {
   const data = request.body;
   const tokenedShop = await getShopIdFromLoginToken(logintoken);
   if (tokenedShop) {
-    const shop = await getShopFromObjectID(tokenedShop.shopId);
+    const shop = await getShopFromObjectID(tokenedShop.userId);
     if (shop.email === data.email) {
       // console.log("profile login shop is", shop);
       if (data.password === data.cpassword) {
