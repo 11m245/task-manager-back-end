@@ -38,7 +38,7 @@ router.post("/new", async function (req, res) {
     const addTaskResponse = await addTaskInDB(formattedTaskData);
     // console.log("add task res", addTaskResponse);
     if (addTaskResponse.acknowledged === true) {
-      res.send({ mesage: "task added" });
+      res.send({ message: "task added" });
     } else {
       res.status(500).send({ mesage: "task not added" });
     }
