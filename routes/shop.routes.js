@@ -175,6 +175,7 @@ router.post("/login", async function (request, response) {
               ? shopFromDB.managerName
               : shopFromDB.name,
             shopName: shopFromDB.shopName,
+            role: shopFromDB.isOperator === true ? "operator" : "shop",
           },
         });
       } else {
